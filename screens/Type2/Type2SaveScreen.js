@@ -95,12 +95,12 @@ const Type2SaveScreen = () => {
                 renderItem={renderItem}
             />
 
-            <TouchableOpacity style={styles.button} onPress={testSaveJson} >
+            {/* <TouchableOpacity style={styles.button} onPress={testSaveJson} >
                 <Text style={styles.buttonText}>Save Data</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.button}>
                 <Text style={styles.buttonText}>Retry</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             {/* Edit Modal */}
             <Modal visible={isEditModalVisible} transparent={true} animationType="slide">
