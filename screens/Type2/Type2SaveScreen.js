@@ -1,4 +1,4 @@
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { CommonActions, useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import { Alert, Button, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
@@ -79,14 +79,87 @@ const Type2SaveScreen = () => {
         </TouchableOpacity>
     );
 
+    const getJsonDataPlastivision = () => {
+        const jsonArray = listBlocks.map((item) => {
+            return {
+                name: item.name,
+                address: item.address,
+                contact: item.contact,
+                email: item.email,
+                website: item.website,
+                contact_person: item.contact_person,
+                product_service: item.product_service,
+            };
+        })
+        return JSON.stringify(jsonArray)
+    }
+
     const testSaveJson = async () => {
         try {
-            saveJson("", getJsonDataPlastivision(), filePath, filePath, "5")
+            saveJson("", getJsonDataPlastivision(), filePath, filePath, "2")
         }
         catch (error) {
             console.log("Error", error.message)
         }
     }
+    const saveJson = async (unorganizedJson, jsonData, appFilePath, filePath, type) => {
+
+        try {
+
+            const requestData = {};
+
+            // const requestData = new FormData()
+
+            const addImageToRequest = (request, title, url) => {
+                if (url && !url.startsWith("http")) {
+                    request[title] = url;
+                }
+            };
+
+            requestData["json_data"] = jsonData;
+            requestData["type"] = type;
+
+            if (unorganizedJson) {
+                requestData["unorganize_json"] = unorganizedJson;
+            }
+
+            if (appFilePath) {
+                addImageToRequest(requestData, "img", appFilePath);
+            }
+            if (filePath) {
+                addImageToRequest(requestData, "excel_file", filePath);
+            }
+
+            console.log("FORMDATAAAA", requestData)
+            const response = await axios.post(`${API_BASE_URL}${API_ENDPOINTS.SAVE_JSON}`, requestData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            if (response.status === 200) {
+                Alert.alert("Success", response.data.msg);
+                navigation.dispatch(CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'Dashboard' }]
+                }))
+
+
+                return response.data.msg;
+            } else {
+                Alert.alert("Error", response.data.msg);
+                throw new Error(response.data.msg);
+            }
+        }
+        catch (error) {
+            Alert.alert("Save Data Error:", error.message)
+        }
+    }
+
+     const retryProcess = () => {
+            navigation.dispatch(CommonActions.reset({
+                routes: [{ name: 'Type2ProcessScreen' }]
+            }))
+        };
+
     return (
         <View style={styles.container}>
             <FlatList
@@ -95,12 +168,12 @@ const Type2SaveScreen = () => {
                 renderItem={renderItem}
             />
 
-            {/* <TouchableOpacity style={styles.button} onPress={testSaveJson} >
+            <TouchableOpacity style={styles.button} onPress={testSaveJson} >
                 <Text style={styles.buttonText}>Save Data</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.button}>
+            <TouchableOpacity style={styles.button} onPress={retryProcess}>
                 <Text style={styles.buttonText}>Retry</Text>
-            </TouchableOpacity> */}
+            </TouchableOpacity>
 
             {/* Edit Modal */}
             <Modal visible={isEditModalVisible} transparent={true} animationType="slide">
