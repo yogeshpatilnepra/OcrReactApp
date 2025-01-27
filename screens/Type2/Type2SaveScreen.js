@@ -1,14 +1,25 @@
 import { CommonActions, useNavigation, useRoute } from "@react-navigation/native";
+import axios from "axios";
 import { useEffect, useState } from "react";
-import { Alert, Button, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Button, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+
+const API_BASE_URL = 'https://ims-api.nepra.co.in/api/company/v1/';
+const API_ENDPOINTS = {
+    TABLE_OCR: 'directory_table_extraction',
+    SAVE_JSON: 'save-gspma-data',
+    SYNC_DATA: 'get-gspma-data',
+    GET_EXCEL: 'export-excel',
+};
 
 const Type2SaveScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
-    const { data, extractedData = [], recognizedText = '' } = route.params || {};
+    const { data, extractedData = [] } = route.params || {};
     const [listBlocks, setListBlocks] = useState([]);
+    const [recognizedText, setRecognizedText] = useState(''); // Recognized text
     const [selectedItem, setSelectedItem] = useState(null);
     const [isEditModalVisible, setEditModalVisible] = useState(false);
+    const [isCopyModalVisible, setCopyModalVisible] = useState(false);  //Copy Dialog
     const [editedData, setEditedData] = useState({
         name: "",
         address: "",
@@ -22,26 +33,29 @@ const Type2SaveScreen = () => {
     //type2 process data
     // const extractedData = route?.params?.extractedData || [];
     // //extracted text from the 
-    // const extractedtext = route?.params.recognizedText || ''
+    const extractedtext = route?.params.recognizedText || ''
     //filepath url
     const filePath = route?.params.croppedImageUri
 
     useEffect(() => {
-        console.log('Received data:', data);
-        console.log('Extracted data:', extractedData);
-        if (data) {
-            setListBlocks(data);
-        } else if (extractedData.length > 0) {
+        if (extractedData.length > 0) {
             setListBlocks(extractedData);
         } else {
             console.log('No valid data to display');
         }
     }, [data, extractedData]);
 
+    //Open EditDialog
     const openEditDialog = (item, index) => {
         setSelectedItem({ ...item, index });
         setEditedData({ ...item, index });
         setEditModalVisible(true);
+    };
+
+    //Open CopyDialog
+    const openCopyDialog = () => {
+        setRecognizedText(extractedtext);
+        setCopyModalVisible(true);
     };
 
     const saveEditDialogDetails = () => {
@@ -63,20 +77,29 @@ const Type2SaveScreen = () => {
             });
         }
     };
-
     const renderItem = ({ item, index }) => (
         <TouchableOpacity
             style={styles.listItem}
             onPress={() => openEditDialog(item, index)}
         >
-            <Text>Name: {item.name || ''}</Text>
-            <Text>Address: {item.address || ''}</Text>
-            <Text>Contact: {item.contact || ''}</Text>
-            <Text>Email: {item.email || ''}</Text>
-            <Text>Website: {item.website || ''}</Text>
-            <Text>Contact Person: {item.contact_person || ''}</Text>
-            <Text>Product Service: {item.product_service || ''}</Text>
-        </TouchableOpacity>
+            <View style={styles.itemContent}>
+                <View>
+                    <Text>Name: {item.name || ''}</Text>
+                    <Text>Address: {item.address || ''}</Text>
+                    <Text>Contact: {item.contact || ''}</Text>
+                    <Text>Email: {item.email || ''}</Text>
+                    <Text>Website: {item.website || ''}</Text>
+                    <Text>Contact Person: {item.contact_person || ''}</Text>
+                    <Text>Product Service: {item.product_service || ''}</Text>
+                </View>
+                <TouchableOpacity onPress={() => deleteItem(index)} style={styles.deleteIconWrapper}>
+                    <Image
+                        source={require('../assets/delete_icon.png')} // Replace with your image path
+                        style={styles.deleteIcon}
+                    />
+                </TouchableOpacity>
+            </View>
+        </TouchableOpacity >
     );
 
     const getJsonDataPlastivision = () => {
@@ -102,14 +125,16 @@ const Type2SaveScreen = () => {
             console.log("Error", error.message)
         }
     }
+
+     //Delete the flatlist item
+     const deleteItem = (indexToDelete) => {
+        setListBlocks((prevlist) => prevlist.filter((_,index) => index!== indexToDelete));
+    }
     const saveJson = async (unorganizedJson, jsonData, appFilePath, filePath, type) => {
 
         try {
 
             const requestData = {};
-
-            // const requestData = new FormData()
-
             const addImageToRequest = (request, title, url) => {
                 if (url && !url.startsWith("http")) {
                     request[title] = url;
@@ -130,7 +155,7 @@ const Type2SaveScreen = () => {
                 addImageToRequest(requestData, "excel_file", filePath);
             }
 
-            console.log("FORMDATAAAA", requestData)
+            // console.log("Type2DATAAAAA",requestData)
             const response = await axios.post(`${API_BASE_URL}${API_ENDPOINTS.SAVE_JSON}`, requestData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
@@ -154,11 +179,11 @@ const Type2SaveScreen = () => {
         }
     }
 
-     const retryProcess = () => {
-            navigation.dispatch(CommonActions.reset({
-                routes: [{ name: 'Type2ProcessScreen' }]
-            }))
-        };
+    const retryProcess = () => {
+        navigation.dispatch(CommonActions.reset({
+            routes: [{ name: 'Type2ProcessScreen' }]
+        }))
+    };
 
     return (
         <View style={styles.container}>
@@ -175,11 +200,39 @@ const Type2SaveScreen = () => {
                 <Text style={styles.buttonText}>Retry</Text>
             </TouchableOpacity>
 
+            {/* Copy Modal */}
+            <Modal visible={isCopyModalVisible} transparent={false} animationType="slide">
+                <View style={[styles.modalContainer,{ flex: 1 }]}>
+                    <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        multiline={true}
+                        value={recognizedText || ''}
+                    />
+                    {/* Add other fields here */}
+                    <View style={styles.modalActions}>
+                        <TouchableOpacity
+                            style={styles.button}
+                            onPress={() => setCopyModalVisible(false)}
+                        >
+                            <Text style={styles.buttonText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+
             {/* Edit Modal */}
             <Modal visible={isEditModalVisible} transparent={true} animationType="slide">
-                <ScrollView contentContainerStyle={styles.modalContainer}>
-                    <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>Edit Entry</Text>
+            <View style={{ flex: 1 }}>
+                <ScrollView contentContainerStyle={[styles.modalContainer]}>
+                    <View>
+                        <View style={{ flexDirection: 'column',flex: 1 }}>
+                            <Text style={styles.modalTitle}>Edit Data</Text>
+                            <TouchableOpacity onPress={() => openCopyDialog()}>
+                                <Text style={styles.copyTitle}>Copy Data</Text>
+                            </TouchableOpacity>
+
+                        </View>
                         <TextInput
                             style={styles.input}
                             placeholder=""
@@ -219,6 +272,7 @@ const Type2SaveScreen = () => {
                         <TextInput
                             style={styles.input}
                             placeholder="Product Service"
+                            multiline={true}
                             value={editedData?.product_service || ''}
                             onChangeText={(text) => setEditedData({ ...editedData, product_service: text })}
                         />
@@ -236,6 +290,7 @@ const Type2SaveScreen = () => {
                         </View>
                     </View>
                 </ScrollView>
+                </View>
             </Modal>
 
         </View>
@@ -243,12 +298,9 @@ const Type2SaveScreen = () => {
 }
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 16 },
-    itemContainer: { padding: 16, backgroundColor: '#f0f0f0', marginBottom: 8 },
-    itemText: { fontSize: 14, color: '#333' },
     button: { padding: 12, backgroundColor: '#00C569', marginVertical: 8, borderRadius: 4 },
     buttonText: { color: '#fff', textAlign: 'center' },
     modalContainer: {
-        flex: 1,
         justifyContent: 'center',
         backgroundColor: 'rgba(0,0,0,0.5)',
         padding: 16,
@@ -256,50 +308,31 @@ const styles = StyleSheet.create({
     modalTitle: { fontSize: 18, color: '#FFF', textAlign: 'center', marginBottom: 10 },
     input: { backgroundColor: '#fff', marginVertical: 8, padding: 12, borderRadius: 4 },
     modalActions: { flexDirection: 'column', justifyContent: 'space-around' },
-    loadingText: { textAlign: 'center', color: 'gray', marginBottom: 10 },
-    item: { marginBottom: 16, padding: 16, backgroundColor: '#f9f9f9', borderRadius: 8 },
-    itemDetails: {
-        fontSize: 14,
-        color: '#555',
-        marginTop: 4,
-    },
-
-    dialogBox: {
-        width: '80%',
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 20,
-        alignItems: 'center',
-    },
-    dialogTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 15,
-    },
-    dialogActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-    },
-    saveButton: {
-        backgroundColor: '#4CAF50',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-    },
-    cancelButton: {
-        backgroundColor: '#f44336',
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 8,
-    },
-
     listItem: {
         padding: 10,
         borderWidth: 1,
         borderRadius: 5,
         marginVertical: 5,
         backgroundColor: '#f9f9f9',
+    },
+    copyTitle: {
+        fontSize: 26, color: '#FFF', textAlign: 'center', marginBottom: 10,
+        borderWidth: 1,
+        borderRadius: 10,
+        borderColor: 'white'
+    },
+    itemContent: {
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+    },
+    deleteIconWrapper: {
+        alignItems:'flex-end'
+    },
+    deleteIcon: {
+        width: 25,
+        height: 25,
+        marginEnd: 5,
+        resizeMode: 'contain',
     },
 });
 export default Type2SaveScreen;

@@ -31,12 +31,20 @@ import Type3ProcessScreen from './screens/Type3/Type3ProcessScreen';
 import Type3SaveScreen from './screens/Type3/Type3SaveScreen';
 import Type4ProcessScreen from './screens/Type4/Type4ProcessScreen';
 import Type4SaveScreen from './screens/Type4/Type4SaveScreen';
+import Gemini from './screens/DemoScreens/Gemini';
 const Stack = createStackNavigator();
 
 const App = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Splash">
+
+        <Stack.Screen
+          name="Gemini"
+          component={Gemini}
+          options={{ headerShown: false }}
+        />
+
         <Stack.Screen
           name="Splash"
           component={SplashScreen}
@@ -56,7 +64,7 @@ const App = () => {
         <Stack.Screen
           name="Type1SaveScreen"
           component={Type1SaveScreen}
-          options={{ headerShown: true, title: 'Hello' }} />
+          options={{ headerShown: true, }} />
         {/* Type1 end-->*/}
 
         {/* Type2 start-->*/}

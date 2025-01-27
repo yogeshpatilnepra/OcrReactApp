@@ -32,7 +32,8 @@ const Type2ProcessScreen = () => {
             setRecognizedText(recognizedText);
             setFilePath(croppedImageUri)
             const lines = recognizedText.split("\n")
-            const data = extractNames(recognizedText)
+            const data = getName(recognizedText)
+            console.log("Dataaa", data)
             type2.setData(data)
             setExtractedData(type2)
             Alert.alert('OCR Complete', 'Text recognized successfully.');
@@ -59,7 +60,7 @@ const Type2ProcessScreen = () => {
         setModalVisible(false);
     };
 
-    const extractNames = (data) => {
+    const getName = (data) => {
         data = recognizedText.split('\n');
         const listName = [];
         const regexPattern = /^[A-Z.()&\s/-]+$/;
@@ -73,7 +74,6 @@ const Type2ProcessScreen = () => {
                 listName.push(line);
             }
         });
-        // console.log("listName---", listName)
         getAddress(data);
         setListName(listName);
         return listName;
@@ -106,7 +106,6 @@ const Type2ProcessScreen = () => {
             }
         });
         getTel(data);
-        // console.log("listAddress---", listAddress)
         setListAddress(listAddress);
         return listAddress;
     };
@@ -122,7 +121,6 @@ const Type2ProcessScreen = () => {
             }
         });
         getEmail(data);
-        // console.log("listContact---", listContact)
         setListContact(listContact);
         return listContact;
     };
@@ -138,7 +136,6 @@ const Type2ProcessScreen = () => {
             }
         });
         getWebsite(data);
-        // console.log("listEmail---", listEmail)
         setListEmail(listEmail);
         return listEmail
     };
@@ -153,7 +150,6 @@ const Type2ProcessScreen = () => {
             }
         });
         getContactPerson(recognizedText);
-        // console.log("listWebsite---", listWebsite)
         setListWebsite(listWebsite);
         return listWebsite;
     };
@@ -172,7 +168,6 @@ const Type2ProcessScreen = () => {
         });
 
         getProductService(data);
-        // console.log("listContactPerson---", listContactPerson)
         setListContactPerson(listContactPerson);
         return listContactPerson;
     };
@@ -205,7 +200,6 @@ const Type2ProcessScreen = () => {
                 listProductService.push(value);
             }
         })
-        // console.log("listProductService---", listProductService)
         setListProductService(listProductService);
         createList();
         return listProductService;
@@ -228,7 +222,6 @@ const Type2ProcessScreen = () => {
         ];
 
         setListBlocks([...listBlocks]);
-        console.log("LISTBLOCKSSS", listBlocks)
         setTimeout(() => {
             navigation.navigate('Type2SaveScreen', {
                 extractedData: listBlocks,

@@ -46,7 +46,9 @@ const DashboardScreen = () => {
     };
 
     //open email dialog code for send the email
+    
     const openEmailModal = (itemId) => {
+        debugger
         setSelectedItem(itemId);
         setEmailModalVisible(true);
     };
@@ -159,7 +161,7 @@ const DashboardScreen = () => {
 
             // handle response with status
             if (response.status === 200) {
-                Alert.alert(`Data fetched successfully: ${response.data.msg}`)
+                Alert.alert(`${response.data.msg}`)
                 return response.data.msg;
             } else {
                 Alert.alert(`Error: No Data Available`)

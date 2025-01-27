@@ -1,9 +1,10 @@
-import { CurrentRenderContext, useNavigation } from "@react-navigation/native";
+import { CurrentRenderContext, LinkingContext, useNavigation } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import { Alert, Button, FlatList, Image, LogBox, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import ImageCropPicker from "react-native-image-crop-picker";
 import MLKit from "react-native-mlkit-ocr";
-import Type2 from "../models/Type2";
+import Type4 from "../models/Type4";
+import { ComposedGesture } from "react-native-gesture-handler/lib/typescript/handlers/gestures/gestureComposition";
 
 const Type4ProcessScreen = () => {
     const navigation = useNavigation();
@@ -11,30 +12,26 @@ const Type4ProcessScreen = () => {
     const [extractedData, setExtractedData] = useState([])
     const [modalVisible, setModalVisible] = useState(false);
     const [recognizedText, setRecognizedText] = useState('');
+    const [filePath, setFilePath] = useState('');
 
     // new for listblocks
     const [listBlocks, setListBlocks] = useState([]);
-    const [listName, setListName] = useState([]);
-    const [listAddress, setListAddress] = useState([]);
-    const [listContact, setListContact] = useState([]);
-    const [listEmail, setListEmail] = useState([]);
-    const [listWebsite, setListWebsite] = useState([]);
-    const [listContactPerson, setListContactPerson] = useState([]);
-    const [listProductService, setListProductService] = useState([]);
 
     //ocr start code
     const processOCR = async () => {
-        const type2 = new Type2();
+        const type4 = new Type4();
         try {
+            setListBlocks([])
             const result = await MLKit.detectFromFile(croppedImageUri);
             const recognizedText = result.map(block => block.text).join('\n');
+            setFilePath(croppedImageUri)
             setRecognizedText(recognizedText);
             const lines = recognizedText.split("\n")
-            console.log('Lines:', lines)
 
-            // const data = getName(lines)
-            // type2.setData(data)
-            // setExtractedData(type2)
+            // const data = getName(recognizedText)
+            getName(recognizedText)
+            // type4.setData(data)
+            // setExtractedData(type4)
             Alert.alert('OCR Complete', 'Text recognized successfully.');
             setExtractedData([]);
         } catch (error) {
@@ -59,8 +56,233 @@ const Type4ProcessScreen = () => {
         setModalVisible(false);
     };
 
+    //------------------------Regex functions---------------//
+    const getName = (data) => {
+        data = recognizedText.split("\n")
+        let lastPosition = 0;
+        let name = '';
+        let isNameFound = false;
+        let membershipNo = '';
+        let address = '';
+        let isAddressFound = false;
+        let gst = '';
+        let telNo = '';
+        let fax = '';
+        let email = '';
+        let website = '';
+        let contact_person = '';
+        let isContactPersonFound = false;
+        let industrycategory = '';
+        let product = '';
+        let isProductFound = false;
+        let hsncode = '';
+
+        for (let i = 0; i < data.length; i++) {
+            const line = data[i].toLowerCase();
+
+            if ((line.toLowerCase().includes('membership') || line.toLowerCase().includes('member')) && membershipNo === '') {
+                isNameFound = true;
+                membershipNo = data[i];
+            }
+            if (!isNameFound) name += data[i];
+
+            if (line.includes('gst') && gst === '') gst = data[i];
+
+            if (membershipNo !== '' && !isAddressFound && gst === '') {
+                address += address === '' ? data[i + 1] : data[i];
+            }
+
+            if (line.replace(' ', '').includes('tel.') && telNo === '') telNo = data[i];
+
+            if (line.replace(' ', '').includes('fax') && fax === '') fax = data[i];
+
+            if (line.replace(' ', '').includes('email') && email === '') email = data[i];
+
+            if (line.replace(' ', '').includes('website') && website === '') website = data[i];
+
+            if (line.replace(' ', '').includes('industry') && industrycategory === '') industrycategory = data[i];
+
+
+            if (website !== '' && !isContactPersonFound && industrycategory === '') {
+                contact_person += contact_person === '' ? data[i + 1] : data[i];
+            }
+
+            if ((line.replace(' ', '').includes('hsncode') || line.replace(' ', '').includes('hsnc0de')) && hsncode === '') {
+                hsncode = data[i];
+                lastPosition = i;
+                break;
+            }
+
+            if (industrycategory !== '' && !isProductFound && hsncode === '') {
+                product += product === '' ? data[i + 1] : data[i];
+            }
+        }
+
+        membershipNo = membershipNo.toUpperCase().replace('MEMBERSHIP NO.:', '').replace('MEMBER', '');
+        address = address.toUpperCase().replace('ADDRESS:', '');
+        gst = gst.toUpperCase().replace('GST NO.:', '');
+        telNo = telNo.toUpperCase().replace('TEL. NO.:', '');
+        fax = fax.toUpperCase().replace('FAX', '').replace(':', '');
+        email = email.toLowerCase().replace('email', '').replace(':', '');
+        website = website.toLowerCase().replace('website', '').replace(':', '');
+        contact_person = contact_person
+            .toUpperCase()
+            .replace('CONTACT PERSON', '')
+            .replace(':', '')
+            .replace('C0NTACT PERSON', '')
+            .replace(':', '');
+        industrycategory = industrycategory
+            .toUpperCase()
+            .replace('INDUSTRY CATEGORY', '')
+            .replace('INDUSTRY CATEG0RY', '')
+            .replace(':', '');
+        hsncode = hsncode.toUpperCase().replace(' ', '').replace('HSNCODE:', '').replace('HSNC0DE:', '');
+        product = product.toUpperCase()
+            .replace('PRODUCT:', '')
+            .replace('PR0DUCT:', '')
+            .replace('MOB.:', '')
+            .replace('M0B.:', '')
+            .replace('HSN CODE:', '')
+            .replace('HSN C0DE:', '');
+        const updatedList1 = [
+            {
+                name,
+                membershipNo,
+                address,
+                gst,
+                telNo,
+                fax,
+                email,
+                website,
+                contact_person,
+                industrycategory,
+                product,
+                hsncode,
+            },
+        ];
+
+        setListBlocks((prevBlocks) => [...prevBlocks, ...updatedList1]);
+        getname2(data, lastPosition);
+    }
+    const getname2 = (data, lastpos) => {
+        data = recognizedText.split("\n")
+        let name = '';
+        let membershipNo = '';
+        let address = '';
+        let gst = '';
+        let telNo = '';
+        let fax = '';
+        let email = '';
+        let website = '';
+        let contact_person = '';
+        let industrycategory = '';
+        let product = '';
+        let hsncode = '';
+
+        for (let i = lastpos; i < data.length; i++) {
+            const line = data[i].toLowerCase();
+
+            if ((line.includes('membership') || line.includes('member')) && membershipNo === '') {
+                membershipNo = data[i];
+                if (name === '') {
+                    const a = data[i - 1];
+                    let b = '';
+                    if (
+                        !(
+                            data[i - 2].toLowerCase().replace(' ', '').includes('hsncode') ||
+                            data[i - 2].toLowerCase().replace(' ', '').includes('hsn c0de')
+                        )
+                    ) {
+                        b = data[i - 2];
+                    }
+                    name = b + a;
+                }
+            }
+
+            if (line.includes('gst') && gst === '') gst = data[i];
+
+            if (membershipNo !== '' && address === '' && gst === '') {
+                address += data[i + 1].replace('ADDRESS:', '');
+            } else if (membershipNo !== '' && gst === '') {
+                address += data[i].replace('ADDRESS:', '');
+            }
+
+            if (line.replace(' ', '').includes('tel.') && telNo === '') telNo = data[i];
+            if (line.replace(' ', '').includes('fax') && fax === '') fax = data[i];
+            if (line.replace(' ', '').includes('email') && email === '') email = data[i];
+            if (line.replace(' ', '').includes('website') && website === '') website = data[i];
+            if (line.replace(' ', '').includes('industry') && industrycategory === '') industrycategory = data[i];
+
+            if (website !== '' && contact_person === '' && industrycategory === '') {
+                contact_person += data[i + 1];
+            } else if (website !== '' && industrycategory === '') {
+                contact_person += data[i];
+            }
+
+            if ((line.replace(' ', '').includes('hsncode') || line.replace(' ', '').includes('hsnc0de')) && hsncode === '') {
+                hsncode += data[i];
+            }
+
+            if (industrycategory !== '' && product === '') {
+                product += data[i - 1];
+            } else if (industrycategory !== '') {
+                product += data[i];
+            }
+        }
+
+        membershipNo = membershipNo.toUpperCase().replace('MEMBERSHIP NO.:', '').replace('MEMBER', '');
+        address = address.toUpperCase().replace('ADDRESS:', '');
+        gst = gst.toUpperCase().replace('GST NO.:', '');
+        telNo = telNo.toUpperCase().replace('TEL. NO.:', '');
+        fax = fax.toUpperCase().replace('FAX', '').replace(':', '');
+        email = email.toLowerCase().replace('email', '').replace(':', '');
+        website = website.toLowerCase().replace('website', '').replace(':', '');
+        contact_person = contact_person
+            .toUpperCase()
+            .replace('CONTACT PERSON', '')
+            .replace(':', '')
+            .replace('C0NTACT PERSON', '')
+            .replace(':', '');
+        industrycategory = industrycategory
+            .toUpperCase()
+            .replace('INDUSTRY CATEGORY', '')
+            .replace('INDUSTRY CATEG0RY', '')
+            .replace(':', '');
+        hsncode = hsncode.toUpperCase().replace(' ', '').replace('HSNCODE:', '').replace('HSNC0DE:', '');
+        product = product.toUpperCase()
+            .replace('PRODUCT:', '')
+            .replace('PR0DUCT:', '')
+            .replace('MOB.:', '')
+            .replace('M0B.:', '')
+            .replace('HSN CODE:', '')
+            .replace('HSN C0DE:', '');
+        const updatedList2 = [
+            {
+                name,
+                membershipNo,
+                address,
+                gst,
+                telNo,
+                fax,
+                email,
+                website,
+                contact_person,
+                industrycategory,
+                product,
+                hsncode,
+            },
+        ];
+        setListBlocks((prevBlocks) => [...prevBlocks, ...updatedList2])
+        setTimeout(() => {
+            navigation.navigate('Type4SaveScreen', {
+                extractedData: listBlocks,
+                croppedImageUri: filePath,
+                recognizedText: recognizedText,
+            });
+        }, 500);
+    }
+
     return (
-        //new updated code at 08-01-2025 after 5 pm
         <ScrollView contentContainerStyle={styles.container}>
             <Text style={styles.title}>Type4 Process</Text>
             <Button title="Select & Crop Image" onPress={() => setModalVisible(true)} />

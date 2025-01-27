@@ -1,7 +1,7 @@
 import { CommonActions, useNavigation, useRoute } from "@react-navigation/native";
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { Alert, Clipboard, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Clipboard, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const API_BASE_URL = 'https://ims-api.nepra.co.in/api/company/v1/';
 const API_ENDPOINTS = {
@@ -14,11 +14,11 @@ const API_ENDPOINTS = {
 const Type5SaveScreen = () => {
     const navigation = useNavigation();
     const route = useRoute();
-
+    const { data, extractedData = [] } = route.params || {};
     const [listBlocks, setListBlocks] = useState([]); // To hold and update the list
     const [recognizedText, setRecognizedText] = useState(''); // Recognized text
-    const [currentEdit, setCurrentEdit] = useState(null); // Currently edited item
-    const [isEditModalVisible, setEditModalVisible] = useState(false);
+    const [isEditModalVisible, setEditModalVisible] = useState(false);   // //Edit Dialog
+    const [isCopyModalVisible, setCopyModalVisible] = useState(false);  //Copy Dialog
     const [loading, setLoading] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
     const [editedData, setEditedData] = useState({
@@ -32,54 +32,27 @@ const Type5SaveScreen = () => {
     });
 
     //type5 process data
-    const extractedData = route?.params?.extractedData || [];
-    //extracted text from the 
     const extractedtext = route?.params.recognizedText || ''
     //filepath url
     const filePath = route?.params.croppedImageUri
     useEffect(() => {
         if (extractedData.length > 0) {
             setListBlocks(extractedData);
-        } else if (extractedtext) {
-            const data = extractDataFromText(extractedtext);
-            setListBlocks(data);
-            setRecognizedText(extractedtext);
-            console.log("ListBlocks Updated: ", data);
+        } else {
+            Alert.alert("No Data", "No valid data to display")
         }
-    }, [extractedData, extractedtext]);
-
-    const extractDataFromText = (text) => {
-        if (!text) return [];
-        const regex = /Name: (.+?) - Factory: (.+?) - Office: (.+?) - Contact: (.+?) - Mobile: (.+?) - Email: (.+?) - Product: (.+?)(?=\n|$)/g;
-        let matches = [];
-        let match;
-
-        while ((match = regex.exec(text)) !== null) {
-            matches.push({
-                name: match[1] || '',
-                factory: match[2] || '',
-                office: match[3] || '',
-                contact: match[4] || '',
-                mobile: match[5] || '',
-                email: match[6] || '',
-                product: match[7] || '',
-            });
-        }
-        return matches;
-    };
+    }, [data, extractedData]);
 
     const retryProcess = () => {
         navigation.dispatch(CommonActions.reset({
             routes: [{ name: 'Type5ProcessScreen' }]
         }))
-        // navigation.navigate('Type5ProcessScreen');
     };
     const saveEditDialogDetails = () => {
         if (selectedItem) {
             const updatedBlocks = [...listBlocks];
             updatedBlocks[selectedItem.index] = { ...editedData };
             setListBlocks(updatedBlocks); // Update the list
-            console.log("Updated ListBlocks: ", updatedBlocks);
             setEditModalVisible(false); // Close modal
             setSelectedItem(null);
             setEditedData({
@@ -94,10 +67,17 @@ const Type5SaveScreen = () => {
         }
     };
 
+    //Open EditDialog
     const openEditDialog = (item, index) => {
         setSelectedItem({ ...item, index });
         setEditedData(item);
         setEditModalVisible(true);
+    };
+
+    //Open CopyDialog
+    const openCopyDialog = () => {
+        setRecognizedText(extractedtext);
+        setCopyModalVisible(true);
     };
 
     const saveJson = async (unorganizedJson, jsonData, appFilePath, filePath, type) => {
@@ -105,8 +85,6 @@ const Type5SaveScreen = () => {
         try {
 
             const requestData = {};
-
-            // const requestData = new FormData()
 
             const addImageToRequest = (request, title, url) => {
                 if (url && !url.startsWith("http")) {
@@ -128,7 +106,7 @@ const Type5SaveScreen = () => {
                 addImageToRequest(requestData, "excel_file", filePath);
             }
 
-            console.log("FORMDATAAAA", requestData)
+            console.log("Type5DATAAAAA", requestData)
             const response = await axios.post(`${API_BASE_URL}${API_ENDPOINTS.SAVE_JSON}`, requestData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
@@ -173,26 +151,38 @@ const Type5SaveScreen = () => {
             saveJson("", getJsonDataPlastivision(), filePath, filePath, "5")
         }
         catch (error) {
-            console.log("Error", error.message)
+            Alert.alert("Error", error.message)
         }
     }
 
-    //renderItems for flatlist
+    //Delete the flatlist item
+    const deleteItem = (indexToDelete) => {
+        setListBlocks((prevlist) => prevlist.filter((_, index) => index !== indexToDelete));
+    }
+
+    // New code for delete the flatlist item
     const renderItem = ({ item, index }) => (
-        <TouchableOpacity
-            style={styles.listItem}
-            onPress={() => openEditDialog(item, index)}
-        >
-            <Text>Name: {item.name}</Text>
-            <Text>Factory: {item.factory}</Text>
-            <Text>Office: {item.office}</Text>
-            <Text>Contact: {item.contact}</Text>
-            <Text>Mobile: {item.mobile}</Text>
-            <Text>Email: {item.email}</Text>
-            <Text>Product: {item.product}</Text>
+        <TouchableOpacity style={styles.listItem} onPress={() => openEditDialog(item, index)}>
+            <View style={styles.itemContent}>
+                <View>
+                    <Text>Name: {item.name || ''}</Text>
+                    <Text>Factory: {item.factory || ''}</Text>
+                    <Text>Office: {item.office || ''}</Text>
+                    <Text>Contact: {item.contact || ''}</Text>
+                    <Text>Mobile: {item.mobile || ''}</Text>
+                    <Text>Email: {item.email || ''}</Text>
+                    <Text>Product: {item.product || ''}</Text>
+                </View>
+                <TouchableOpacity onPress={() => deleteItem(index)} style={styles.deleteIconWrapper}>
+                    <Image
+                        source={require('../assets/delete_icon.png')} // Replace with your image path
+                        style={styles.deleteIcon}
+                    />
+                    {/* <Text style={{fontSize:18,color:'black'}}>Delete Item</Text> */}
+                </TouchableOpacity>
+            </View>
         </TouchableOpacity>
     );
-
     return (
         <View style={styles.container}>
             {loading && <Text style={styles.loadingText}>Loading...</Text>}
@@ -209,74 +199,103 @@ const Type5SaveScreen = () => {
                 <Text style={styles.buttonText}>Retry</Text>
             </TouchableOpacity>
 
+            {/* Copy Modal */}
+            <Modal visible={isCopyModalVisible} transparent={false} animationType="slide">
+                <View style={[styles.modalContainer,{flex:1}]}>
+                    <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        multiline={true}
+                        value={recognizedText || ''}
+                    />
+                    {/* Add other fields here */}
+                    <View style={styles.modalActions}>
+                        <TouchableOpacity
+                            style={styles.button}
+                            onPress={() => setCopyModalVisible(false)}
+                        >
+                            <Text style={styles.buttonText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
             {/* Edit Modal */}
             <Modal visible={isEditModalVisible} transparent={true} animationType="slide">
-                <ScrollView contentContainerStyle={styles.modalContainer}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.ModalTitleView}>
-                            <Text style={styles.modalTitle}>Edit Data</Text>
-                            {/* <TouchableOpacity>
-                                <Text style={styles.copyTitle}>Copy</Text>
-                            </TouchableOpacity> */}
+                <View style={{ flex: 1 }}>
+                    <ScrollView contentContainerStyle={[styles.modalContainer]}>
+                        <View>
+                            <View style={{ flexDirection: 'column', flex: 1 }}>
+                                <Text style={styles.modalTitle}>Edit Data</Text>
+                                <TouchableOpacity onPress={() => openCopyDialog()}>
+                                    <Text style={styles.copyTitle}>Copy Data</Text>
+                                </TouchableOpacity>
 
-                        </View>
+                            </View>
 
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Name"
-                            value={editedData?.name || ''}
-                            onChangeText={(text) => setEditedData({ ...editedData, name: text })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Factory"
-                            value={editedData?.factory || ''}
-                            onChangeText={(text) => setEditedData({ ...editedData, factory: text })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Office"
-                            value={editedData?.office || ''}
-                            onChangeText={(text) => setEditedData({ ...editedData, office: text })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Contact"
-                            value={editedData?.contact || ''}
-                            onChangeText={(text) => setEditedData({ ...editedData, contact: text })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Mobile"
-                            value={editedData?.mobile || ''}
-                            onChangeText={(text) => setEditedData({ ...editedData, mobile: text })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Email"
-                            value={editedData?.email || ''}
-                            onChangeText={(text) => setEditedData({ ...editedData, email: text })}
-                        />
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Product"
-                            value={editedData?.product || ''}
-                            onChangeText={(text) => setEditedData({ ...editedData, product: text })}
-                        />
-                        {/* Add other fields here */}
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.button} onPress={saveEditDialogDetails}>
-                                <Text style={styles.buttonText}>Save</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.button}
-                                onPress={() => setEditModalVisible(false)}
-                            >
-                                <Text style={styles.buttonText}>Cancel</Text>
-                            </TouchableOpacity>
+                            <TextInput
+                                multiline={true}
+                                style={styles.input}
+                                placeholder="Name"
+                                value={editedData?.name || ''}
+                                onChangeText={(text) => setEditedData({ ...editedData, name: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Factory"
+                                multiline={true}
+                                value={editedData?.factory || ''}
+                                onChangeText={(text) => setEditedData({ ...editedData, factory: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Office"
+                                multiline={true}
+                                value={editedData?.office || ''}
+                                onChangeText={(text) => setEditedData({ ...editedData, office: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Contact"
+                                multiline={true}
+                                value={editedData?.contact || ''}
+                                onChangeText={(text) => setEditedData({ ...editedData, contact: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Mobile"
+                                multiline={true}
+                                value={editedData?.mobile || ''}
+                                onChangeText={(text) => setEditedData({ ...editedData, mobile: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Email"
+                                multiline={true}
+                                value={editedData?.email || ''}
+                                onChangeText={(text) => setEditedData({ ...editedData, email: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Product"
+                                multiline={true}
+                                value={editedData?.product || ''}
+                                onChangeText={(text) => setEditedData({ ...editedData, product: text })}
+                            />
+                            {/* Add other fields here */}
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity style={styles.button} onPress={saveEditDialogDetails}>
+                                    <Text style={styles.buttonText}>Save</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.button}
+                                    onPress={() => setEditModalVisible(false)}
+                                >
+                                    <Text style={styles.buttonText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    </View>
-                </ScrollView>
+                    </ScrollView>
+                </View>
             </Modal>
         </View>
     )
@@ -289,7 +308,6 @@ const styles = StyleSheet.create({
     button: { padding: 12, backgroundColor: '#00C569', marginVertical: 8, borderRadius: 4 },
     buttonText: { color: '#fff', textAlign: 'center' },
     modalContainer: {
-        flex: 1,
         justifyContent: 'center',
         backgroundColor: 'rgba(0,0,0,0.5)',
         padding: 16,
@@ -311,10 +329,24 @@ const styles = StyleSheet.create({
         // backgroundColor:'#00C569'
     },
     copyTitle: {
-        fontSize: 18, color: '#FFF', textAlign: 'center', marginBottom: 10,
+        fontSize: 26, color: '#FFF', textAlign: 'center', marginBottom: 10,
         borderWidth: 1,
         borderRadius: 10,
-    }
+        borderColor: 'white'
+    },
+    itemContent: {
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+    },
+    deleteIconWrapper: {
+        alignItems: 'flex-end'
+    },
+    deleteIcon: {
+        width: 25,
+        height: 25,
+        marginEnd: 5,
+        resizeMode: 'contain',
+    },
 });
 
 export default Type5SaveScreen;
