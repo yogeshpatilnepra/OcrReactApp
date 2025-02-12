@@ -1,13 +1,14 @@
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { useState } from "react";
-import { Alert, FlatList, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Image, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 const DashboardScreen = () => {
     const GET_EXCEL = "export-excel"
     const BASE_URL = "https://ims-api.nepra.co.in/api/company/v1/"
     const SYNC_DATA = "get-gspma-data"
     const navigation = useNavigation();
+    const [loading, setLoading] = useState(false);
 
     //custom data for create the flatlist.
     const [dashboardItems] = useState([
@@ -46,9 +47,8 @@ const DashboardScreen = () => {
     };
 
     //open email dialog code for send the email
-    
+
     const openEmailModal = (itemId) => {
-        debugger
         setSelectedItem(itemId);
         setEmailModalVisible(true);
     };
@@ -116,6 +116,8 @@ const DashboardScreen = () => {
     }
     //for send email
     const sendEmail = async (mtype, memail) => {
+        setEmailModalVisible(false)
+        setLoading(true);
         try {
             const request = {
                 type: mtype,
@@ -129,7 +131,7 @@ const DashboardScreen = () => {
             });
 
             if (response.status === 200) {
-                setEmailModalVisible(false);
+                setLoading(false);
                 setEmail('');
                 Alert.alert(`Email Sent: ${response.data.msg}`)
                 return response.data.msg;
@@ -197,6 +199,13 @@ const DashboardScreen = () => {
     return (
         <View style={styles.container}>
             {/* FlatList for dashboard items */}
+
+            {loading ? (
+                <ActivityIndicator size={'large'} color={'#00c569'} />
+            ) : (
+                <Text style={styles.sendButtonText}></Text>
+            )}
+
             <FlatList
                 data={dashboardItems}
                 keyExtractor={(item) => item.id}
@@ -270,7 +279,7 @@ const styles = StyleSheet.create({
     },
     syncButton: {
         position: 'absolute',
-        bottom: 20,
+        bottom: 5,
         right: 20,
         width: 55,
         height: 55,
@@ -360,6 +369,12 @@ const styles = StyleSheet.create({
     buttonText: {
         color: '#FFF',
         fontSize: 14,
+    },
+    sendButtonText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+        alignSelf: 'center'
     },
 });
 export default DashboardScreen;

@@ -6,6 +6,7 @@ import MLKit from "react-native-mlkit-ocr";
 import Type1 from "../models/Type1";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import axios from "axios";
+import { sayHello } from "../CommonApiCode/ApiCallCode";
 
 LogBox.ignoreAllLogs();
 const Type1ProcessScreen = () => {
@@ -14,6 +15,9 @@ const Type1ProcessScreen = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [loading, setLoading] = useState(false);
     const [filePath, setFilePath] = useState('');
+
+    //new code
+
 
     const [recognizedText, setRecognizedText] = useState('');
 
@@ -118,6 +122,10 @@ const Type1ProcessScreen = () => {
         setModalVisible(false);
     };
 
+    useEffect(() => {
+
+    })
+
     //new data
     const getName = (generateContent) => {
 
@@ -133,6 +141,15 @@ const Type1ProcessScreen = () => {
         setListProductName(productNameList);
         createList();
     }
+
+    useEffect(() => {
+        console.log("Updated State: ", {
+            listNameAddress,
+            listContactPerson,
+            listPhoneEmail,
+            listProductName
+        });
+    }, [listNameAddress, listContactPerson, listPhoneEmail, listProductName]); 
 
     const createList = () => {
         make3Size(listNameAddress);
@@ -179,7 +196,6 @@ const Type1ProcessScreen = () => {
                     <Text style={styles.sendButtonText}>Select & Crop Image</Text>
                 }
             </TouchableOpacity>
-            {/* <Button title="Select & Crop Image" onPress={() => setModalVisible(true)} /> */}
             <Image
                 source={{ uri: croppedImageUri }}
                 style={styles.syncIcon}
