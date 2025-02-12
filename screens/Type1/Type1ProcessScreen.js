@@ -72,7 +72,7 @@ const Type1ProcessScreen = () => {
                     if (firstCandidate.content.parts && firstCandidate.content.parts.length > 0) {
                         const generatedText = response.data.candidates[0]?.content?.parts?.[0]?.text || "";
                         setRecognizedText("" + generatedText);
-                        const jsonMatch = generatedText.match(/\[.*\]/s); // Match anything between [ and ]
+                        const jsonMatch = generatedText.match(/\[.*\]/s);
                         if (!jsonMatch) {
                             throw new Error("No valid JSON found in the response");
                         }
@@ -141,15 +141,6 @@ const Type1ProcessScreen = () => {
         setListProductName(productNameList);
         createList();
     }
-
-    useEffect(() => {
-        console.log("Updated State: ", {
-            listNameAddress,
-            listContactPerson,
-            listPhoneEmail,
-            listProductName
-        });
-    }, [listNameAddress, listContactPerson, listPhoneEmail, listProductName]); 
 
     const createList = () => {
         make3Size(listNameAddress);
